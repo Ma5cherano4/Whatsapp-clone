@@ -5,7 +5,6 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 
-// Set high buffer limit (100MB) to handle image payloads safely
 const io = new Server(server, {
   maxHttpBufferSize: 1e8
 });
@@ -20,6 +19,7 @@ io.on('connection', (socket) => {
       id: data.id,
       text: data.text,
       image: data.image,
+      audio: data.audio,
       isViewOnce: data.isViewOnce,
       user: data.user,
       time: data.time,
