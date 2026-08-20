@@ -44,7 +44,8 @@
     .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
     .details { display: flex; flex-direction: column; }
     .header-title { font-size: 16px; font-weight: 600; }
-    .header-status { font-size: 12px; color: #25d366; }
+    .header-status { font-size: 12px; color: #25d366; transition: color 0.3s; }
+    .header-status.typing { color: var(--accent); font-style: italic; }
 
     #messages { flex: 1; list-style: none; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 18px 18px; }
     #messages li { padding: 8px 12px; font-size: 14.5px; max-width: 80%; width: fit-content; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.2); display: flex; flex-direction: column; color: var(--text-color); }
@@ -152,6 +153,7 @@
     const input = document.getElementById('input');
     const messages = document.getElementById('messages');
     const micBtn = document.getElementById('mic-btn');
+    const statusText = document.getElementById('status');
     
     let pendingImageData = null;
     let isViewOnce = false;
@@ -161,6 +163,26 @@
     let mediaRecorder = null;
     let audioChunks = [];
     let isRecording = false;
+
+    // Typing Indicator Handlers
+    let typingTimeout;
+    input.addEventListener('input', () => {
+      socket.emit('typing', username);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        socket.emit('stop typing');
+      }, 1500);
+    });
+
+    socket.on('typing', (user) => {
+      statusText.textContent = `${user} is typing...`;
+      statusText.classList.add('typing');
+    });
+
+    socket.on('stop typing', () => {
+      statusText.textContent = 'online';
+      statusText.classList.remove('typing');
+    });
 
     function playNotificationSound() {
       try {
@@ -316,6 +338,9 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       if (input.value.trim() !== '') {
+        socket.emit('stop typing');
+        clearTimeout(typingTimeout);
+
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const messageId = Date.now() + Math.random().toString(36).substring(2, 5);
 
