@@ -4,43 +4,36 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
+const io = new Server(server);
 
-const io = new Server(server, {
-  maxHttpBufferSize: 1e8
-});
-
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
+app.use(express.static(__dirname));
 
 io.on('connection', (socket) => {
-  socket.on('chat message', (data) => {
-    io.emit('chat message', {
-      id: data.id,
+  console.log('User connected:', socket.id);
+
+  socket.on('chatMessage', (data) => {
+    const messagePayload = {
+      id: Date.now().toString(),
+      senderId: socket.id,
+      senderName: `User_${socket.id.substring(0, 4)}`,
       text: data.text,
-      image: data.image,
-      audio: data.audio,
-      isViewOnce: data.isViewOnce,
-      user: data.user,
-      time: data.time,
-      senderId: socket.id
-    });
+      replyTo: data.replyTo ? {
+        id: data.replyTo.id,
+        sender: data.replyTo.sender,
+        text: data.replyTo.text
+      } : null
+    };
+
+    // Broadcast message to all connected clients
+    io.emit('message', messagePayload);
   });
 
-  socket.on('view once opened', (msgId) => {
-    io.emit('view once opened', msgId);
-  });
-
-  socket.on('typing', (username) => {
-    socket.broadcast.emit('typing', username);
-  });
-
-  socket.on('stop typing', () => {
-    socket.broadcast.emit('stop typing');
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server listening on http://localhost:${PORT}`);
 });
