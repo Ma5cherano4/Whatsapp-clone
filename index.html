@@ -56,7 +56,6 @@
     #messages li.sent { background: var(--bubble-sent); align-self: flex-end; border-radius: 10px 10px 0 10px; }
     #messages li.received { background: var(--bubble-received); align-self: flex-start; border-radius: 10px 10px 10px 0; }
 
-    /* Voice Note Player Styling */
     .audio-player-container { display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 200px; }
     .audio-player-container audio { width: 100%; height: 36px; filter: invert(0.8); }
 
@@ -125,7 +124,6 @@
       <button type="button" class="icon-btn" onclick="document.getElementById('file-input').click()">📎</button>
       <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
       <input id="input" autocomplete="off" placeholder="Type a message..." />
-      <!-- Mic Button for Voice Notes -->
       <button type="button" id="mic-btn" class="icon-btn mic-btn" onclick="toggleVoiceRecording()">🎤</button>
       <button type="submit">Send</button>
     </form>
@@ -160,7 +158,6 @@
     let activeViewOnceMsgId = null;
     const viewOnceStore = {};
 
-    // Voice Note Recorder variables
     let mediaRecorder = null;
     let audioChunks = [];
     let isRecording = false;
@@ -181,12 +178,19 @@
       } catch (e) {}
     }
 
-    // Toggle VN recording
     async function toggleVoiceRecording() {
       if (!isRecording) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          mediaRecorder = new MediaRecorder(stream);
+
+          let options = {};
+          if (MediaRecorder.isTypeSupported('audio/webm')) {
+            options = { mimeType: 'audio/webm' };
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            options = { mimeType: 'audio/mp4' };
+          }
+
+          mediaRecorder = new MediaRecorder(stream, options);
           audioChunks = [];
 
           mediaRecorder.ondataavailable = (event) => {
@@ -194,14 +198,15 @@
           };
 
           mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const mimeType = mediaRecorder.mimeType || 'audio/webm';
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
             const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
+            
             reader.onloadend = () => {
-              const base64Audio = reader.result;
-              sendVoiceNote(base64Audio);
+              sendVoiceNote(reader.result);
             };
-            // Stop microphone stream tracks
+            reader.readAsDataURL(audioBlob);
+
             stream.getTracks().forEach(track => track.stop());
           };
 
@@ -210,10 +215,9 @@
           micBtn.classList.add('recording');
           input.placeholder = "Recording voice note...";
         } catch (err) {
-          alert("Microphone access was denied or is not supported.");
+          alert("Microphone access denied or unsupported. Ensure you use an HTTPS link.");
         }
       } else {
-        // Stop recording and process audio
         mediaRecorder.stop();
         isRecording = false;
         micBtn.classList.remove('recording');
