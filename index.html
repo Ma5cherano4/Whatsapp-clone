@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ultimate Web Chat</title>
+  <!-- Link the PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
   <style>
     :root {
       --bg: #0f0f13;
@@ -20,8 +22,10 @@
     .app-container { width: 100%; max-width: 480px; height: 95vh; background: var(--card); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
 
     .header { padding: 14px; background: #121219; border-bottom: 1px solid #2a2a3d; display: flex; justify-content: space-between; align-items: center; }
-    .header h1 { font-size: 16px; color: var(--accent); }
-    .call-btn { background: #00e676; border: none; padding: 6px 12px; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; font-size: 12px; }
+    .header h1 { font-size: 15px; color: var(--accent); }
+    .header-btns { display: flex; gap: 6px; }
+    .call-btn { background: #00e676; border: none; padding: 6px 10px; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; font-size: 11px; }
+    .install-btn { background: var(--accent); border: none; padding: 6px 10px; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 11px; display: none; }
 
     .chat-box { flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 
@@ -47,7 +51,6 @@
     .icon-btn:hover { color: var(--accent); }
     .send-btn { background: var(--accent); color: white; border: none; border-radius: 10px; padding: 0 14px; height: 38px; font-weight: bold; cursor: pointer; }
 
-    /* Call Overlay */
     #call-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
     video { width: 80%; max-width: 360px; border-radius: 12px; background: #000; }
     .hangup-btn { background: #ff5252; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
@@ -58,7 +61,6 @@
 </head>
 <body>
 
-  <!-- Name Modal -->
   <div id="name-modal" class="modal">
     <div class="modal-content">
       <h2 style="margin-bottom: 10px; font-size: 18px;">Enter Chat Name</h2>
@@ -67,7 +69,6 @@
     </div>
   </div>
 
-  <!-- Call Overlay -->
   <div id="call-overlay">
     <h2 id="call-status">Live Call</h2>
     <video id="remote-video" autoplay playsinline></video>
@@ -77,8 +78,11 @@
 
   <div class="app-container">
     <div class="header">
-      <h1>💬 Multi-Feature Chat</h1>
-      <button class="call-btn" onclick="startCall()">📞 Call</button>
+      <h1>💬 Chat App</h1>
+      <div class="header-btns">
+        <button id="install-btn" class="install-btn" onclick="installApp()">📥 Install</button>
+        <button class="call-btn" onclick="startCall()">📞 Call</button>
+      </div>
     </div>
 
     <div class="chat-box" id="chat-messages"></div>
@@ -108,6 +112,28 @@
     let currentReply = null;
     let mediaRecorder;
     let audioChunks = [];
+
+    // PWA Install Prompt Logic
+    let deferredPrompt;
+    const installBtn = document.getElementById('install-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'block'; // Show install button when available
+    });
+
+    function installApp() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            installBtn.style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      }
+    }
 
     function startApp() {
       const val = document.getElementById('username-input').value.trim();
@@ -207,7 +233,6 @@
       reader.readAsDataURL(file);
     }
 
-    // Voice Note Recording
     async function startRecording() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -232,7 +257,7 @@
         mediaRecorder.start();
         document.getElementById('mic-btn').style.color = '#ff3366';
       } catch (err) {
-        alert('Microphone access denied or unavailable.');
+        alert('Microphone access denied.');
       }
     }
 
@@ -251,7 +276,7 @@
         <div class="modal-content" style="max-width:340px;">
           <h3 style="margin-bottom:10px; color:var(--accent);">View-Once Media</h3>
           ${type === 'image' ? `<img src="${content}" style="width:100%; border-radius:8px;" />` : `<div>${content}</div>`}
-          <button class="send-btn" style="width:100%; margin-top:12px;" onclick="this.parentElement.parentElement.remove()">Close (Wont open again)</button>
+          <button class="send-btn" style="width:100%; margin-top:12px;" onclick="this.parentElement.parentElement.remove()">Close</button>
         </div>
       `;
       document.body.appendChild(modal);
@@ -268,7 +293,6 @@
       document.getElementById('reply-preview').style.display = 'none';
     }
 
-    // WebRTC Calling Code
     let peerConnection;
     let localStream;
     const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
