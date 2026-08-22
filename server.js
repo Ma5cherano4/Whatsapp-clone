@@ -27,18 +27,20 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+// Serve the manifest.json file
+app.get('/manifest.json', (req, res) => {
+  res.sendFile(__dirname + '/manifest.json');
+});
 
+io.on('connection', (socket) => {
   socket.emit('load messages', messages);
 
-  // Handle incoming rich messages (text, image, VN, view-once)
   socket.on('send message', (data) => {
     const newMessage = {
       id: Date.now(),
       user: data.user || 'Anonymous',
-      type: data.type || 'text', // 'text', 'image', 'vn'
-      content: data.content,     // text string or base64 data url
+      type: data.type || 'text',
+      content: data.content,
       viewOnce: data.viewOnce || false,
       viewed: false,
       replyTo: data.replyTo || null,
@@ -52,7 +54,6 @@ io.on('connection', (socket) => {
     io.emit('new message', newMessage);
   });
 
-  // Handle view-once consumption (burns the message after opening)
   socket.on('consume view-once', (msgId) => {
     const msg = messages.find(m => m.id == msgId);
     if (msg && msg.viewOnce && !msg.viewed) {
@@ -63,7 +64,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // WebRTC Call Signaling (Offers, Answers, ICE Candidates)
   socket.on('call-user', (data) => {
     socket.broadcast.emit('incoming-call', { from: data.from, offer: data.offer });
   });
@@ -79,5 +79,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Ultimate Chat Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
