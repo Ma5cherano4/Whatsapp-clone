@@ -3,446 +3,169 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WhatsApp Web</title>
+  <title>Persistent Chat with History</title>
   <style>
     :root {
-      --bg-color: #0b141a;
-      --chat-bg: #0b141a;
-      --header-bg: #202c33;
-      --header-text: #e9edef;
-      --bubble-sent: #005c4b;
-      --bubble-received: #202c33;
-      --text-color: #e9edef;
-      --input-bg: #2a3942;
-      --bar-bg: #202c33;
-      --ticks-color: #53bdeb;
-      --subtext-color: #8696a0;
-      --accent: #00a884;
-    }
-
-    body.light-mode {
-      --bg-color: #d1d7db;
-      --chat-bg: #efeae2;
-      --header-bg: #075e54;
-      --header-text: #ffffff;
-      --bubble-sent: #d9fdd3;
-      --bubble-received: #ffffff;
-      --text-color: #111b21;
-      --input-bg: #ffffff;
-      --bar-bg: #f0f2f5;
-      --ticks-color: #53bdeb;
-      --subtext-color: #667781;
+      --bg: #12121a;
+      --card: #1e1e2d;
+      --accent: #ff3366;
+      --text: #ffffff;
+      --subtext: #a0a0b0;
+      --bubble: #252538;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+
+    .chat-container { width: 100%; max-width: 480px; height: 90vh; max-height: 700px; background: var(--card); border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+
+    .chat-header { padding: 16px; background: #161622; border-bottom: 1px solid #2a2a3d; text-align: center; }
+    .chat-header h1 { font-size: 18px; color: var(--accent); }
+
+    .chat-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+    .message-card { background: var(--bubble); padding: 12px; border-radius: 12px; max-width: 85%; font-size: 14px; position: relative; word-break: break-word; }
+    .message-card .username { font-weight: bold; color: #ff80ab; margin-bottom: 4px; font-size: 13px; }
+    .message-card .timestamp { font-size: 10px; color: var(--subtext); float: right; margin-top: 4px; margin-left: 8px; }
     
-    #chat-container { display: flex; flex-direction: column; width: 100%; max-width: 520px; height: 92vh; background: var(--chat-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.4); position: relative; }
+    .quoted-box { background: rgba(0,0,0,0.3); padding: 6px 10px; border-radius: 6px; font-size: 12px; margin-bottom: 6px; border-left: 2px solid var(--accent); color: var(--subtext); }
+
+    .reply-btn { background: none; border: none; color: var(--subtext); font-size: 11px; cursor: pointer; margin-top: 6px; display: inline-block; text-decoration: underline; }
+    .reply-btn:hover { color: var(--text); }
+
+    #reply-preview { display: none; background: #161622; padding: 10px 16px; border-top: 1px solid #2a2a3d; font-size: 13px; justify-content: space-between; align-items: center; }
+    #reply-preview .preview-content { color: var(--subtext); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 85%; }
+    #reply-preview button { background: none; border: none; color: var(--accent); cursor: pointer; font-weight: bold; font-size: 14px; }
+
+    .chat-input-area { padding: 16px; background: #161622; border-top: 1px solid #2a2a3d; display: flex; flex-direction: column; gap: 8px; }
     
-    #header { background: var(--header-bg); color: var(--header-text); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
-    .user-info { display: flex; align-items: center; gap: 12px; }
-    .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-    .details { display: flex; flex-direction: column; }
-    .header-title { font-size: 16px; font-weight: 600; }
-    .header-status { font-size: 12px; color: #25d366; transition: color 0.3s; }
-    .header-status.typing { color: var(--accent); font-style: italic; }
+    .input-row { display: flex; gap: 8px; }
+    input[type="text"] { flex: 1; background: #121217; border: 1px solid #333; border-radius: 10px; padding: 12px; color: var(--text); font-size: 14px; outline: none; }
+    input[type="text"]:focus { border-color: var(--accent); }
 
-    #messages { flex: 1; list-style: none; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 18px 18px; }
-    #messages li { padding: 8px 12px; font-size: 14.5px; max-width: 80%; width: fit-content; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.2); display: flex; flex-direction: column; color: var(--text-color); }
-    .sender-name { font-size: 11px; font-weight: bold; color: var(--accent); margin-bottom: 3px; }
-    .chat-img { max-width: 100%; border-radius: 8px; margin-top: 4px; cursor: pointer; max-height: 250px; object-fit: cover; }
-    .meta-info { font-size: 10px; color: var(--subtext-color); align-self: flex-end; margin-top: 4px; display: flex; gap: 4px; align-items: center; }
-    .ticks { color: var(--ticks-color); font-weight: bold; }
+    .send-btn { background: var(--accent); color: white; border: none; border-radius: 10px; padding: 0 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+    .send-btn:hover { opacity: 0.9; }
 
-    #messages li.sent { background: var(--bubble-sent); align-self: flex-end; border-radius: 10px 10px 0 10px; }
-    #messages li.received { background: var(--bubble-received); align-self: flex-start; border-radius: 10px 10px 10px 0; }
-
-    .audio-player-container { display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 200px; }
-    .audio-player-container audio { width: 100%; height: 36px; filter: invert(0.8); }
-
-    .view-once-badge { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; padding: 6px 12px; background: rgba(0,0,0,0.2); border-radius: 16px; margin-top: 4px; }
-    .view-once-badge.opened { cursor: default; opacity: 0.5; font-weight: normal; }
-    .view-once-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px dashed var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: var(--accent); }
-
-    #preview-modal { display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; align-items: center; justify-content: space-between; padding: 20px; }
-    #preview-modal.active { display: flex; }
-    #preview-img { max-width: 100%; max-height: 70%; border-radius: 8px; object-fit: contain; }
-    .preview-controls { display: flex; gap: 15px; align-items: center; width: 100%; justify-content: center; }
-    .view-once-toggle { width: 42px; height: 42px; border-radius: 50%; border: 2px solid #8696a0; background: transparent; color: #8696a0; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .view-once-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(0, 168, 132, 0.2); }
-
-    #fullscreen-viewer { display: none; position: absolute; inset: 0; background: #000; z-index: 200; flex-direction: column; justify-content: center; align-items: center; }
-    #fullscreen-viewer.active { display: flex; }
-    #fullscreen-img { max-width: 100%; max-height: 85%; object-fit: contain; }
-    .close-viewer-btn { position: absolute; top: 15px; right: 20px; background: none; border: none; color: white; font-size: 28px; cursor: pointer; }
-
-    #emoji-drawer { display: none; padding: 10px; background: var(--bar-bg); grid-template-columns: repeat(7, 1fr); gap: 8px; justify-items: center; }
-    #emoji-drawer.active { display: grid; }
-    .emoji-item { background: none; border: none; font-size: 20px; cursor: pointer; }
-    
-    #form { display: flex; padding: 10px; background: var(--bar-bg); gap: 8px; align-items: center; }
-    .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--subtext-color); }
-    .mic-btn.recording { color: #ff3b30; animation: pulse 1s infinite; }
-
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1); }
-    }
-
-    #input { flex: 1; padding: 12px 16px; font-size: 15px; border: none; border-radius: 20px; outline: none; background: var(--input-bg); color: var(--text-color); }
-    button[type="submit"] { padding: 10px 18px; font-size: 15px; background: var(--accent); color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10; }
+    .modal-card { background: var(--card); padding: 24px; border-radius: 16px; width: 90%; max-width: 320px; text-align: center; }
+    .modal-card h2 { margin-bottom: 12px; font-size: 18px; }
   </style>
 </head>
 <body>
 
-  <div id="chat-container">
-    <div id="header">
-      <div class="user-info">
-        <div class="avatar">WA</div>
-        <div class="details">
-          <span class="header-title">Live Chat</span>
-          <span id="status" class="header-status">online</span>
-        </div>
+  <div id="name-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2>Enter Chat</h2>
+      <input type="text" id="modal-name" placeholder="Your username..." style="width: 100%; margin-bottom: 12px;" />
+      <button class="send-btn" style="width: 100%; padding: 12px;" onclick="joinChat()">Start Chatting</button>
+    </div>
+  </div>
+
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>💬 Persistent Chat Room</h1>
+    </div>
+
+    <div class="chat-messages" id="messages-container"></div>
+
+    <div id="reply-preview">
+      <div class="preview-content" id="reply-preview-text">Replying to...</div>
+      <button onclick="cancelReply()">✕</button>
+    </div>
+
+    <form class="chat-input-area" onsubmit="sendMessage(event)">
+      <div class="input-row">
+        <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off" required />
+        <button type="submit" class="send-btn">Send</button>
       </div>
-      <button class="icon-btn" onclick="document.body.classList.toggle('light-mode')">☀️</button>
-    </div>
-
-    <ul id="messages"></ul>
-
-    <div id="emoji-drawer">
-      <button class="emoji-item" onclick="addEmoji('😀')">😀</button>
-      <button class="emoji-item" onclick="addEmoji('😂')">😂</button>
-      <button class="emoji-item" onclick="addEmoji('😍')">😍</button>
-      <button class="emoji-item" onclick="addEmoji('😎')">😎</button>
-      <button class="emoji-item" onclick="addEmoji('👍')">👍</button>
-      <button class="emoji-item" onclick="addEmoji('🔥')">🔥</button>
-      <button class="emoji-item" onclick="addEmoji('❤️')">❤️</button>
-    </div>
-
-    <form id="form">
-      <button type="button" class="icon-btn" onclick="document.getElementById('emoji-drawer').classList.toggle('active')">😀</button>
-      <button type="button" class="icon-btn" onclick="document.getElementById('file-input').click()">📎</button>
-      <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
-      <input id="input" autocomplete="off" placeholder="Type a message..." />
-      <button type="button" id="mic-btn" class="icon-btn mic-btn" onclick="toggleVoiceRecording()">🎤</button>
-      <button type="submit">Send</button>
     </form>
-
-    <div id="preview-modal">
-      <img id="preview-img" src="" alt="Preview">
-      <div class="preview-controls">
-        <button type="button" class="icon-btn" style="color: white; font-size: 24px;" onclick="cancelImagePreview()">✕</button>
-        <button type="button" id="view-once-btn" class="view-once-toggle" onclick="toggleViewOnceMode()" title="View Once">①</button>
-        <button type="button" style="padding: 10px 24px; background: var(--accent); color: white; border: none; border-radius: 20px; font-weight: bold; cursor: pointer;" onclick="sendSelectedImage()">Send</button>
-      </div>
-    </div>
-
-    <div id="fullscreen-viewer">
-      <button class="close-viewer-btn" onclick="closeFullscreenViewer()">✕</button>
-      <img id="fullscreen-img" src="" alt="View Once Photo">
-    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const username = prompt("Enter your name:") || "User";
+    let myName = '';
+    let currentReplyTo = null;
 
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
-    const micBtn = document.getElementById('mic-btn');
-    const statusText = document.getElementById('status');
-    
-    let pendingImageData = null;
-    let isViewOnce = false;
-    let activeViewOnceMsgId = null;
-    const viewOnceStore = {};
-
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let isRecording = false;
-
-    // Typing Indicator Handlers
-    let typingTimeout;
-    input.addEventListener('input', () => {
-      socket.emit('typing', username);
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        socket.emit('stop typing');
-      }, 1500);
-    });
-
-    socket.on('typing', (user) => {
-      statusText.textContent = `${user} is typing...`;
-      statusText.classList.add('typing');
-    });
-
-    socket.on('stop typing', () => {
-      statusText.textContent = 'online';
-      statusText.classList.remove('typing');
-    });
-
-    function playNotificationSound() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-      } catch (e) {}
-    }
-
-    async function toggleVoiceRecording() {
-      if (!isRecording) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-          let options = {};
-          if (MediaRecorder.isTypeSupported('audio/webm')) {
-            options = { mimeType: 'audio/webm' };
-          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-            options = { mimeType: 'audio/mp4' };
-          }
-
-          mediaRecorder = new MediaRecorder(stream, options);
-          audioChunks = [];
-
-          mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) audioChunks.push(event.data);
-          };
-
-          mediaRecorder.onstop = () => {
-            const mimeType = mediaRecorder.mimeType || 'audio/webm';
-            const audioBlob = new Blob(audioChunks, { type: mimeType });
-            const reader = new FileReader();
-            
-            reader.onloadend = () => {
-              sendVoiceNote(reader.result);
-            };
-            reader.readAsDataURL(audioBlob);
-
-            stream.getTracks().forEach(track => track.stop());
-          };
-
-          mediaRecorder.start();
-          isRecording = true;
-          micBtn.classList.add('recording');
-          input.placeholder = "Recording voice note...";
-        } catch (err) {
-          alert("Microphone access denied or unsupported. Ensure you use an HTTPS link.");
-        }
-      } else {
-        mediaRecorder.stop();
-        isRecording = false;
-        micBtn.classList.remove('recording');
-        input.placeholder = "Type a message...";
+    function joinChat() {
+      const input = document.getElementById('modal-name');
+      const name = input.value.trim();
+      if (name) {
+        myName = name;
+        document.getElementById('name-modal').style.display = 'none';
       }
     }
 
-    function sendVoiceNote(audioData) {
-      const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const messageId = Date.now() + Math.random().toString(36).substring(2, 5);
+    const messagesContainer = document.getElementById('messages-container');
 
-      socket.emit('chat message', {
-        id: messageId,
-        audio: audioData,
-        text: '',
-        user: username,
-        time: currentTime
-      });
-    }
-
-    function handleFileSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const MAX_WIDTH = 1000;
-          const MAX_HEIGHT = 1000;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          pendingImageData = canvas.toDataURL('image/jpeg', 0.7);
-          document.getElementById('preview-img').src = pendingImageData;
-          document.getElementById('preview-modal').classList.add('active');
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function toggleViewOnceMode() {
-      isViewOnce = !isViewOnce;
-      document.getElementById('view-once-btn').classList.toggle('active', isViewOnce);
-    }
-
-    function cancelImagePreview() {
-      pendingImageData = null;
-      isViewOnce = false;
-      document.getElementById('view-once-btn').classList.remove('active');
-      document.getElementById('preview-modal').classList.remove('active');
-      document.getElementById('file-input').value = '';
-    }
-
-    function sendSelectedImage() {
-      if (!pendingImageData) return;
-      const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const messageId = Date.now() + Math.random().toString(36).substring(2, 5);
-
-      socket.emit('chat message', {
-        id: messageId,
-        image: pendingImageData,
-        isViewOnce: isViewOnce,
-        text: '',
-        user: username,
-        time: currentTime
-      });
-
-      cancelImagePreview();
-    }
-
-    function addEmoji(emoji) {
-      input.value += emoji;
-      input.focus();
-    }
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (input.value.trim() !== '') {
-        socket.emit('stop typing');
-        clearTimeout(typingTimeout);
-
-        const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const messageId = Date.now() + Math.random().toString(36).substring(2, 5);
-
-        socket.emit('chat message', {
-          id: messageId,
-          text: input.value,
-          user: username,
-          time: currentTime
-        });
-        input.value = '';
-        document.getElementById('emoji-drawer').classList.remove('active');
-      }
+    socket.on('load messages', (messages) => {
+      messagesContainer.innerHTML = '';
+      messages.forEach(appendMessage);
     });
 
-    socket.on('chat message', (data) => {
-      const item = document.createElement('li');
-      item.id = `msg-${data.id}`;
-      const isMe = data.senderId === socket.id;
+    socket.on('new message', (msg) => {
+      appendMessage(msg);
+    });
 
-      if (!isMe) playNotificationSound();
-
-      item.classList.add(isMe ? 'sent' : 'received');
-
-      let bodyContent = '';
-
-      if (data.audio) {
-        bodyContent = `
-          <div class="audio-player-container">
-            <audio controls src="${data.audio}"></audio>
+    function appendMessage(m) {
+      let quoteHtml = '';
+      if (m.replyTo) {
+        quoteHtml = `
+          <div class="quoted-box">
+            ↳ <strong>${escapeHtml(m.replyTo.user)}</strong>: ${escapeHtml(m.replyTo.text)}
           </div>
         `;
-      } else if (data.image) {
-        if (data.isViewOnce) {
-          viewOnceStore[data.id] = data.image;
-          bodyContent = `
-            <div class="view-once-badge" id="badge-${data.id}" onclick="openViewOncePhoto('${data.id}')">
-              <div class="view-once-circle">1</div>
-              <span id="badge-text-${data.id}">Photo</span>
-            </div>
-          `;
-        } else {
-          bodyContent = `<img src="${data.image}" class="chat-img" onclick="openFullscreen('${data.image}')" />`;
-        }
-      } else {
-        bodyContent = `<span>${data.text}</span>`;
       }
 
-      item.innerHTML = `
-        ${!isMe ? `<span class="sender-name">${data.user}</span>` : ''}
-        ${bodyContent}
-        <span class="meta-info">
-          ${data.time}
-          ${isMe ? '<span class="ticks">✓✓</span>' : ''}
-        </span>
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message-card';
+      msgDiv.innerHTML = `
+        ${quoteHtml}
+        <div class="username">${escapeHtml(m.user)}</div>
+        <div>${escapeHtml(m.text)}</div>
+        <div>
+          <button class="reply-btn" onclick="setReply('${m.id}', '${escapeHtml(m.user).replace(/'/g, "\\'")}', '${escapeHtml(m.text).replace(/'/g, "\\'")}')">Reply</button>
+          <span class="timestamp">${m.time}</span>
+        </div>
       `;
-
-      messages.appendChild(item);
-      messages.scrollTop = messages.scrollHeight;
-    });
-
-    function openViewOncePhoto(msgId) {
-      const imageSrc = viewOnceStore[msgId];
-      const badgeText = document.getElementById(`badge-text-${msgId}`);
-
-      if (!imageSrc || badgeText.textContent === 'Opened') return;
-
-      activeViewOnceMsgId = msgId;
-      document.getElementById('fullscreen-img').src = imageSrc;
-      document.getElementById('fullscreen-viewer').classList.add('active');
+      messagesContainer.appendChild(msgDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    function closeFullscreenViewer() {
-      document.getElementById('fullscreen-viewer').classList.remove('active');
-      document.getElementById('fullscreen-img').src = '';
+    function setReply(id, user, text) {
+      currentReplyTo = { id, user, text };
+      const preview = document.getElementById('reply-preview');
+      const previewText = document.getElementById('reply-preview-text');
+      preview.style.display = 'flex';
+      previewText.innerHTML = `Replying to <strong>${user}</strong>: "${text}"`;
+      document.getElementById('msg-input').focus();
+    }
 
-      if (activeViewOnceMsgId) {
-        delete viewOnceStore[activeViewOnceMsgId];
-        markBadgeAsOpened(activeViewOnceMsgId);
-        socket.emit('view once opened', activeViewOnceMsgId);
-        activeViewOnceMsgId = null;
+    function cancelReply() {
+      currentReplyTo = null;
+      document.getElementById('reply-preview').style.display = 'none';
+    }
+
+    function sendMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+
+      if (text && myName) {
+        socket.emit('send message', {
+          user: myName,
+          text: text,
+          replyTo: currentReplyTo
+        });
+        input.value = '';
+        cancelReply();
       }
     }
 
-    function openFullscreen(src) {
-      document.getElementById('fullscreen-img').src = src;
-      document.getElementById('fullscreen-viewer').classList.add('active');
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
     }
-
-    function markBadgeAsOpened(msgId) {
-      const badge = document.getElementById(`badge-${msgId}`);
-      const badgeText = document.getElementById(`badge-text-${msgId}`);
-      if (badge && badgeText) {
-        badge.classList.add('opened');
-        badge.onclick = null;
-        badgeText.textContent = 'Opened';
-      }
-    }
-
-    socket.on('view once opened', (msgId) => {
-      markBadgeAsOpened(msgId);
-      delete viewOnceStore[msgId];
-    });
   </script>
 </body>
 </html>
