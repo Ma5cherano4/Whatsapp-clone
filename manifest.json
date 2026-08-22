@@ -1,6 +1,6 @@
 {
-  "name": "Ultimate Chat App",
-  "short_name": "ChatApp",
+  "name": "Femi's Chat App",
+  "short_name": "FemiChat",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f13",
